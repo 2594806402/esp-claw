@@ -1,0 +1,17 @@
+idf_component_register(
+    SRCS
+        "src/cap_lua.c"
+        "src/cap_lua_runtime.c"
+        "src/cap_lua_async.c"
+        "src/cmd_cap_lua.c"
+    INCLUDE_DIRS
+        "include"
+        "src"
+    REQUIRES
+        claw_cap
+        console
+        esp_timer
+        freertos
+        georgik__lua
+        json
+)

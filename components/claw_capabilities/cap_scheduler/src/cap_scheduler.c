@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #include "cap_scheduler_internal.h"
 
 #include <inttypes.h>
@@ -170,6 +175,21 @@ static bool cap_scheduler_parse_session_policy_local(const char *value,
     return false;
 }
 
+static bool cap_scheduler_item_requires_valid_time(const cap_scheduler_item_t *item)
+{
+    if (!item) {
+        return true;
+    }
+
+    if (item->kind == CAP_SCHEDULER_ITEM_INTERVAL &&
+            item->start_at_ms <= 0 &&
+            item->end_at_ms <= 0) {
+        return false;
+    }
+
+    return true;
+}
+
 static void cap_scheduler_lock(void)
 {
     xSemaphoreTakeRecursive(s_cap_scheduler.mutex, portMAX_DELAY);
@@ -200,7 +220,7 @@ static ssize_t cap_scheduler_find_entry_index_locked(const char *id)
 
     for (size_t i = 0; i < s_cap_scheduler.max_items; i++) {
         if (s_cap_scheduler.entries[i].occupied &&
-            strcmp(s_cap_scheduler.entries[i].item.id, id) == 0) {
+                strcmp(s_cap_scheduler.entries[i].item.id, id) == 0) {
             return (ssize_t)i;
         }
     }
@@ -243,6 +263,12 @@ static esp_err_t cap_scheduler_refresh_entry_locked(cap_scheduler_entry_t *entry
         return ESP_OK;
     }
     if (entry->status == CAP_SCHEDULER_STATUS_PAUSED) {
+        return ESP_OK;
+    }
+    if (!s_cap_scheduler.time_valid &&
+            cap_scheduler_item_requires_valid_time(&entry->item)) {
+        entry->status = CAP_SCHEDULER_STATUS_SCHEDULED;
+        entry->next_fire_ms = -1;
         return ESP_OK;
     }
 
@@ -424,7 +450,7 @@ static esp_err_t cap_scheduler_fire_due_entries(void)
             continue;
         }
         if (entry->item.catch_up_policy == CAP_SCHEDULER_CATCH_UP_SKIP &&
-            now_ms > entry->next_fire_ms + (int64_t)s_cap_scheduler.config.tick_ms) {
+                now_ms > entry->next_fire_ms + (int64_t)s_cap_scheduler.config.tick_ms) {
             entry->missed_count++;
             if (cap_scheduler_refresh_entry_locked(entry, now_ms) != ESP_OK) {
                 overall = ESP_FAIL;
@@ -488,7 +514,7 @@ static esp_err_t cap_scheduler_load_from_disk_locked(void)
         s_cap_scheduler.entries[i].occupied = true;
         s_cap_scheduler.entries[i].item = items[i];
         s_cap_scheduler.entries[i].status = items[i].enabled ?
-            CAP_SCHEDULER_STATUS_SCHEDULED : CAP_SCHEDULER_STATUS_DISABLED;
+                                            CAP_SCHEDULER_STATUS_SCHEDULED : CAP_SCHEDULER_STATUS_DISABLED;
         s_cap_scheduler.entries[i].next_fire_ms = -1;
     }
     s_cap_scheduler.item_count = item_count;
@@ -513,7 +539,7 @@ static esp_err_t cap_scheduler_load_from_disk_locked(void)
         }
         err = cap_scheduler_refresh_entry_locked(&s_cap_scheduler.entries[i],
                                                  s_cap_scheduler.entries[i].last_fire_ms > 0 ?
-                                                     s_cap_scheduler.entries[i].last_fire_ms : now_ms);
+                                                 s_cap_scheduler.entries[i].last_fire_ms : now_ms);
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "Failed to refresh schedule %s: %s",
                      s_cap_scheduler.entries[i].item.id,
@@ -619,13 +645,13 @@ esp_err_t cap_scheduler_init(const cap_scheduler_config_t *config)
     }
 
     s_cap_scheduler.config.tick_ms = s_cap_scheduler.config.tick_ms ?
-        s_cap_scheduler.config.tick_ms : CAP_SCHEDULER_DEFAULT_TICK_MS;
+                                     s_cap_scheduler.config.tick_ms : CAP_SCHEDULER_DEFAULT_TICK_MS;
     s_cap_scheduler.config.max_items = s_cap_scheduler.config.max_items ?
-        s_cap_scheduler.config.max_items : CAP_SCHEDULER_DEFAULT_MAX_ITEMS;
+                                       s_cap_scheduler.config.max_items : CAP_SCHEDULER_DEFAULT_MAX_ITEMS;
     s_cap_scheduler.config.task_stack_size = s_cap_scheduler.config.task_stack_size ?
-        s_cap_scheduler.config.task_stack_size : CAP_SCHEDULER_DEFAULT_STACK;
+                                             s_cap_scheduler.config.task_stack_size : CAP_SCHEDULER_DEFAULT_STACK;
     s_cap_scheduler.config.task_priority = s_cap_scheduler.config.task_priority ?
-        s_cap_scheduler.config.task_priority : CAP_SCHEDULER_DEFAULT_PRIORITY;
+                                           s_cap_scheduler.config.task_priority : CAP_SCHEDULER_DEFAULT_PRIORITY;
     s_cap_scheduler.config.task_core = config ? config->task_core : tskNO_AFFINITY;
     s_cap_scheduler.config.persist_after_fire = true;
 
@@ -644,6 +670,7 @@ esp_err_t cap_scheduler_init(const cap_scheduler_config_t *config)
     if (!s_cap_scheduler.entries) {
         return ESP_ERR_NO_MEM;
     }
+    s_cap_scheduler.time_valid = false;
     s_cap_scheduler.initialized = true;
 
     cap_scheduler_lock();
@@ -749,7 +776,7 @@ esp_err_t cap_scheduler_add(const cap_scheduler_item_t *item)
     s_cap_scheduler.entries[index].item = *item;
     cap_scheduler_apply_defaults(&s_cap_scheduler.entries[index].item, s_cap_scheduler.default_timezone);
     s_cap_scheduler.entries[index].status = item->enabled ?
-        CAP_SCHEDULER_STATUS_SCHEDULED : CAP_SCHEDULER_STATUS_DISABLED;
+                                            CAP_SCHEDULER_STATUS_SCHEDULED : CAP_SCHEDULER_STATUS_DISABLED;
     cap_scheduler_refresh_entry_locked(&s_cap_scheduler.entries[index], now_ms);
     s_cap_scheduler.item_count = cap_scheduler_active_count_locked();
     err = cap_scheduler_persist_locked();
@@ -848,7 +875,7 @@ esp_err_t cap_scheduler_enable(const char *id, bool enabled)
     previous_entry = s_cap_scheduler.entries[index];
     s_cap_scheduler.entries[index].item.enabled = enabled;
     s_cap_scheduler.entries[index].status = enabled ?
-        CAP_SCHEDULER_STATUS_SCHEDULED : CAP_SCHEDULER_STATUS_DISABLED;
+                                            CAP_SCHEDULER_STATUS_SCHEDULED : CAP_SCHEDULER_STATUS_DISABLED;
     s_cap_scheduler.entries[index].last_error_code = ESP_OK;
     cap_scheduler_refresh_entry_locked(&s_cap_scheduler.entries[index], now_ms);
     err = cap_scheduler_persist_locked();
@@ -1011,6 +1038,52 @@ esp_err_t cap_scheduler_get_state_json(const char *id, char *buf, size_t size)
     cap_scheduler_snapshot_t snapshot = {0};
     ESP_RETURN_ON_ERROR(cap_scheduler_get_snapshot(id, &snapshot), TAG, "snapshot not found");
     return cap_scheduler_write_snapshot_json(&snapshot, buf, size);
+}
+
+esp_err_t cap_scheduler_handle_time_sync(void)
+{
+    bool had_valid_time;
+    int64_t now_ms;
+    esp_err_t err;
+
+    if (!s_cap_scheduler.initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    cap_scheduler_lock();
+    had_valid_time = s_cap_scheduler.time_valid;
+    s_cap_scheduler.time_valid = true;
+    now_ms = cap_scheduler_now_ms();
+
+    for (size_t i = 0; i < s_cap_scheduler.max_items; i++) {
+        cap_scheduler_entry_t *entry = &s_cap_scheduler.entries[i];
+
+        if (!entry->occupied) {
+            continue;
+        }
+
+        if (!had_valid_time &&
+                entry->item.kind == CAP_SCHEDULER_ITEM_INTERVAL &&
+                !cap_scheduler_item_requires_valid_time(&entry->item)) {
+            entry->last_fire_ms = 0;
+            entry->last_success_ms = 0;
+            entry->next_fire_ms = -1;
+        }
+        if (entry->status == CAP_SCHEDULER_STATUS_PAUSED) {
+            continue;
+        }
+
+        err = cap_scheduler_refresh_entry_locked(entry, now_ms);
+        if (err != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to refresh schedule %s after time sync: %s",
+                     entry->item.id,
+                     esp_err_to_name(err));
+        }
+    }
+
+    err = cap_scheduler_persist_locked();
+    cap_scheduler_unlock();
+    return err;
 }
 
 static esp_err_t cap_scheduler_execute_list(const char *input_json,

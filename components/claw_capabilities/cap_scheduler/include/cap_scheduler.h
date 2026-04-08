@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #pragma once
 
 #include <stdbool.h>
@@ -106,6 +111,7 @@ esp_err_t cap_scheduler_trigger_now(const char *id);
 esp_err_t cap_scheduler_get_snapshot(const char *id, cap_scheduler_snapshot_t *out);
 esp_err_t cap_scheduler_list_json(char *buf, size_t size);
 esp_err_t cap_scheduler_get_state_json(const char *id, char *buf, size_t size);
+esp_err_t cap_scheduler_handle_time_sync(void);
 
 #ifdef __cplusplus
 }

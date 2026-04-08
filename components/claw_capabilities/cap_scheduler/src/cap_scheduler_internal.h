@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #pragma once
 
 #include <stdbool.h>
@@ -43,6 +48,7 @@ typedef struct {
     cap_scheduler_entry_t *entries;
     size_t max_items;
     size_t item_count;
+    bool time_valid;
 } cap_scheduler_runtime_t;
 
 extern cap_scheduler_runtime_t s_cap_scheduler;

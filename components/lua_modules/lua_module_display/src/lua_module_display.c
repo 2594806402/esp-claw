@@ -13,6 +13,7 @@
 #include "lua_module_display.h"
 
 #include "cap_lua.h"
+#include "display_arbiter.h"
 #include "display_hal.h"
 #include "esp_err.h"
 #include "lauxlib.h"
@@ -146,8 +147,14 @@ static int lua_display_init(lua_State *L)
     int lcd_height = lua_display_check_integer_arg(L, 4, "lcd_height");
     display_hal_panel_if_t panel_if = lua_display_parse_panel_if(L, 5);
 
-    esp_err_t err = display_hal_create(panel_handle, io_handle, panel_if, lcd_width, lcd_height);
+    esp_err_t err = display_arbiter_acquire(DISPLAY_ARBITER_OWNER_LUA);
     if (err != ESP_OK) {
+        return luaL_error(L, "display init acquire failed: %s", esp_err_to_name(err));
+    }
+
+    err = display_hal_create(panel_handle, io_handle, panel_if, lcd_width, lcd_height);
+    if (err != ESP_OK) {
+        display_arbiter_release(DISPLAY_ARBITER_OWNER_LUA);
         return luaL_error(L, "display init failed: %s", esp_err_to_name(err));
     }
 
@@ -161,6 +168,11 @@ static int lua_display_deinit(lua_State *L)
     esp_err_t err = display_hal_destroy();
     if (err != ESP_OK) {
         return luaL_error(L, "display deinit failed: %s", esp_err_to_name(err));
+    }
+
+    err = display_arbiter_release(DISPLAY_ARBITER_OWNER_LUA);
+    if (err != ESP_OK) {
+        return luaL_error(L, "display release failed: %s", esp_err_to_name(err));
     }
 
     lua_pushboolean(L, 1);
@@ -1353,7 +1365,6 @@ int luaopen_display(lua_State *L)
     lua_setfield(L, -2, "init");
     lua_pushcfunction(L, lua_display_deinit);
     lua_setfield(L, -2, "deinit");
-
     lua_pushcfunction(L, lua_display_width);
     lua_setfield(L, -2, "width");
     lua_pushcfunction(L, lua_display_height);

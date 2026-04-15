@@ -113,6 +113,7 @@ static esp_err_t init_skills(void)
     ESP_RETURN_ON_ERROR(claw_skill_init(&(claw_skill_config_t) {
         .skills_root_dir = BASIC_DEMO_SKILLS_ROOT_DIR,
         .session_state_root_dir = BASIC_DEMO_MEMORY_SESSION_ROOT,
+        .max_file_bytes = 10*1024,
     }),
     TAG,
     "Failed to init claw_skill");

@@ -27,6 +27,7 @@
 #include "cap_skill.h"
 #include "cap_time.h"
 #include "cap_web_search.h"
+#include "claw_event_publisher.h"
 #include "claw_event_router.h"
 #include "claw_cap.h"
 #include "claw_core.h"
@@ -112,6 +113,7 @@ static esp_err_t init_skills(void)
     ESP_RETURN_ON_ERROR(claw_skill_init(&(claw_skill_config_t) {
         .skills_root_dir = BASIC_DEMO_SKILLS_ROOT_DIR,
         .session_state_root_dir = BASIC_DEMO_MEMORY_SESSION_ROOT,
+        .max_file_bytes = 10*1024,
     }),
     TAG,
     "Failed to init claw_skill");
@@ -121,7 +123,7 @@ static esp_err_t init_skills(void)
 static esp_err_t init_capabilities(const basic_demo_settings_t *settings)
 {
     claw_cap_config_t cap_config = {
-        .max_capabilities = 48,
+        .max_capabilities = 64,
         .max_groups = 20,
     };
 
@@ -247,6 +249,9 @@ static esp_err_t init_capabilities(const basic_demo_settings_t *settings)
     ESP_RETURN_ON_ERROR(cap_web_search_register_group(),
                         TAG,
                         "Failed to register web search cap");
+    ESP_RETURN_ON_ERROR(cap_router_mgr_register_group(),
+                        TAG,
+                        "Failed to register router manager cap");
     ESP_RETURN_ON_ERROR(cap_session_mng_register_group(),
                         TAG,
                         "Failed to register session manager cap");
@@ -295,7 +300,7 @@ esp_err_t app_clawgent_start(const basic_demo_settings_t *settings)
     claw_core_config_t core_config = {0};
     claw_event_router_config_t router_config = {
         .rules_path = BASIC_DEMO_AUTOMATION_RULES_PATH,
-        .task_stack_size = 6 * 1024,
+        .task_stack_size = 8 * 1024,
         .task_priority = 5,
         .task_core = tskNO_AFFINITY,
         .core_submit_timeout_ms = 1000,

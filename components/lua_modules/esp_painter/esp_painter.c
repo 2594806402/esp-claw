@@ -11,6 +11,7 @@
 #include "esp_painter.h"
 #include "esp_cache.h"
 #include "esp_heap_caps.h"
+#undef CONFIG_SOC_PPA_SUPPORTED
 #define CONFIG_SOC_PPA_SUPPORTED 0
 #if CONFIG_SOC_PPA_SUPPORTED
 #include "esp_private/esp_cache_private.h"

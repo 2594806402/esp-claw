@@ -199,4 +199,3 @@ esp-clawgent/
 Agent Loop 和 IM 通讯等功能在 ESP32 上的实现参考了 [MimiClaw](https://github.com/memovai/mimiclaw)。
 
 MimiClaw 同时也揭示了在 ESP32-S3 上运行 OpenClaw 的可行性。
-

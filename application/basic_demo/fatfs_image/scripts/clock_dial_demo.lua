@@ -107,14 +107,6 @@ local function draw_dial_shell()
     draw_ticks()
 end
 
-local function draw_labels()
-    display.fill_round_rect(card_x + 16, card_y + 14, card_w - 32, 12, 6, 12, 28, 48)
-    display.fill_round_rect(card_x + 24, card_y + 18, 42, 4, 2, GLOW_R, GLOW_G, GLOW_B)
-    display.fill_round_rect(card_x + card_w - 66, card_y + 18, 42, 4, 2, 28, 110, 188)
-    display.fill_round_rect(cx - 26, digital_y + 55, 52, 4, 2, 18, 52, 88)
-    display.fill_round_rect(cx - 12, digital_y + 55, 24, 4, 2, GLOW_R, GLOW_G, GLOW_B)
-end
-
 local function parse_now()
     local h = tonumber(system.date("%H")) or 0
     local m = tonumber(system.date("%M")) or 0
@@ -129,10 +121,10 @@ local function draw_time(h, m, s)
     local digital = string.format("%02d:%02d:%02d", h, m, s)
     local digital_w = display.measure_text(digital, { font_size = 28 })
 
-    draw_hand(hour_angle, -10, radius - 56, HOUR_R, HOUR_G, HOUR_B)
-    draw_hand(hour_angle + 1, -10, radius - 56, HOUR_R, HOUR_G, HOUR_B)
-    draw_hand(minute_angle, -12, radius - 36, MIN_R, MIN_G, MIN_B)
-    draw_hand(second_angle, -18, radius - 28, SEC_R, SEC_G, SEC_B)
+    draw_hand(hour_angle, 0, radius - 56, HOUR_R, HOUR_G, HOUR_B)
+    draw_hand(hour_angle + 1, 0, radius - 56, HOUR_R, HOUR_G, HOUR_B)
+    draw_hand(minute_angle, 0, radius - 36, MIN_R, MIN_G, MIN_B)
+    draw_hand(second_angle, 0, radius - 28, SEC_R, SEC_G, SEC_B)
 
     display.fill_circle(cx, dial_cy, 12, 12, 26, 44)
     display.fill_circle(cx, dial_cy, 7, SEC_R, SEC_G, SEC_B)
@@ -162,7 +154,6 @@ local run_ok, run_err = xpcall(function()
 
         display.begin_frame({ clear = true, r = BG_R, g = BG_G, b = BG_B })
         draw_dial_shell()
-        draw_labels()
         draw_time(hour, minute, second)
         display.present()
         display.end_frame()

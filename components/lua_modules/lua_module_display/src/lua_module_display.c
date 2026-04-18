@@ -16,6 +16,7 @@
 #include "display_arbiter.h"
 #include "display_hal.h"
 #include "esp_err.h"
+#include "esp_log.h"
 #include "lauxlib.h"
 #include "png.h"
 
@@ -23,6 +24,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static const char *TAG = "lua_display";
 
 /* -------------------------------------------------------------------------
  * Argument helpers (mirrors the reference implementation)
@@ -135,6 +138,18 @@ static display_hal_panel_if_t lua_display_parse_panel_if(lua_State *L, int index
 /* -------------------------------------------------------------------------
  * Screen lifecycle
  * ---------------------------------------------------------------------- */
+
+static void lua_display_runtime_cleanup(void)
+{
+    if (!display_arbiter_is_owner(DISPLAY_ARBITER_OWNER_LUA)) {
+        return;
+    }
+    ESP_LOGI(TAG, "Lua runtime cleanup: display still owned by Lua, releasing");
+
+    if (display_hal_destroy() == ESP_OK) {
+        display_arbiter_release(DISPLAY_ARBITER_OWNER_LUA);
+    }
+}
 
 static int lua_display_init(lua_State *L)
 {
@@ -1464,5 +1479,9 @@ int luaopen_display(lua_State *L)
 
 esp_err_t lua_module_display_register(void)
 {
-    return cap_lua_register_module("display", luaopen_display);
+    esp_err_t err = cap_lua_register_module("display", luaopen_display);
+    if (err != ESP_OK) {
+        return err;
+    }
+    return cap_lua_register_runtime_cleanup(lua_display_runtime_cleanup);
 }

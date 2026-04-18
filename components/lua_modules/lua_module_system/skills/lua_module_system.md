@@ -31,6 +31,12 @@ This skill describes how to correctly use system when writing Lua scripts.
 - Output: `integer`
 - Returns the device uptime in seconds
 
+### `system.ip()`
+- Inputs: none
+- Output: `string | nil`
+- Returns the current Wi-Fi STA IPv4 address
+- Returns `nil` when the device is not connected or no IP address is assigned
+
 ### `system.info()`
 - Inputs: none
 - Output: `table`
@@ -54,6 +60,7 @@ print(system.time())
 print(system.date("%Y-%m-%d %H:%M:%S"))
 print(system.millis())
 print(system.uptime())
+print(system.ip())
 
 local info = system.info()
 print(info.sram_free)

@@ -5,6 +5,7 @@ idf_component_register(
         "include"
     REQUIRES
         cap_lua
+        esp_netif
         esp_timer
         esp_wifi
         heap

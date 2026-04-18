@@ -5,28 +5,20 @@
  */
 #include "lua_module_system.h"
 
-#include <string.h>
 #include <sys/time.h>
 #include <time.h>
 
 #include "cap_lua.h"
+#include "esp_netif.h"
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "lauxlib.h"
-#include "sdkconfig.h"
-
-static void lua_module_system_ensure_tz(void)
-{
-    setenv("TZ", CONFIG_BASIC_DEMO_TIME_TIMEZONE, 1);
-    tzset();
-}
 
 static int lua_module_system_time(lua_State *L)
 {
     time_t now;
 
-    lua_module_system_ensure_tz();
     now = time(NULL);
     if (now < 0) {
         return luaL_error(L, "system clock not set");
@@ -44,7 +36,6 @@ static int lua_module_system_date(lua_State *L)
     time_t now;
     size_t len;
 
-    lua_module_system_ensure_tz();
     now = time(NULL);
     localtime_r(&now, &local_time);
 
@@ -73,6 +64,37 @@ static int lua_module_system_uptime(lua_State *L)
     return 1;
 }
 
+static bool lua_module_system_get_sta_ip(char *buf, size_t buf_size)
+{
+    esp_netif_t *netif = NULL;
+    esp_netif_ip_info_t ip_info = {0};
+
+    if (!buf || buf_size == 0) {
+        return false;
+    }
+
+    netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (!netif || esp_netif_get_ip_info(netif, &ip_info) != ESP_OK || ip_info.ip.addr == 0) {
+        return false;
+    }
+
+    snprintf(buf, buf_size, IPSTR, IP2STR(&ip_info.ip));
+    return true;
+}
+
+static int lua_module_system_ip(lua_State *L)
+{
+    char ip_buf[16];
+
+    if (!lua_module_system_get_sta_ip(ip_buf, sizeof(ip_buf))) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    lua_pushstring(L, ip_buf);
+    return 1;
+}
+
 static int lua_module_system_info(lua_State *L)
 {
     char date_buf[32];
@@ -88,7 +110,6 @@ static int lua_module_system_info(lua_State *L)
     lua_pushinteger(L, (lua_Integer)(us / 1000000));
     lua_setfield(L, -2, "uptime_s");
 
-    lua_module_system_ensure_tz();
     now = time(NULL);
     lua_pushnumber(L, (lua_Number)now);
     lua_setfield(L, -2, "time");
@@ -145,6 +166,9 @@ int luaopen_system(lua_State *L)
 
     lua_pushcfunction(L, lua_module_system_uptime);
     lua_setfield(L, -2, "uptime");
+
+    lua_pushcfunction(L, lua_module_system_ip);
+    lua_setfield(L, -2, "ip");
 
     lua_pushcfunction(L, lua_module_system_info);
     lua_setfield(L, -2, "info");

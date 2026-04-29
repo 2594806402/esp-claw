@@ -78,8 +78,13 @@ git commit -m "feat: 添加传感器支持"
 
 # 4. 推送到你自己的 GitHub
 git push origin my-feature
-```
 
+# 直接拉取和合并 upstream/master 到 my-feature 分支
+git pull upstream master
+
+# 5. 将原作者的改动“垫”在你的修改之下
+git rebase upstream/master
+```
 ### 场景 C：处理代码冲突
 如果在执行 `git merge upstream/master` 时出现冲突：
 1. 打开冲突文件，搜索 `<<<<<<<`, `=======`, `>>>>>>>` 标记。
